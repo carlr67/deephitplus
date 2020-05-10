@@ -1,6 +1,7 @@
+# Based upon https://www.gitignore.io/api/macos,python
 
-# Created by https://www.gitignore.io/api/macos,python
-# Edit at https://www.gitignore.io/?templates=macos,python
+### DeepHitPlus output folders ###
+output/
 
 ### macOS ###
 # General
