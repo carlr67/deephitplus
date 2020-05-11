@@ -71,7 +71,7 @@ def f_get_fc_mask3(time, meas_time, num_Category):
 
 # IMPORT DATASET FUNCTIONS
 
-def import_dataset_SYNTHETIC(norm_mode='standard', features='all'):
+def import_dataset_SYNTHETIC(norm_mode='standard'):
     # Import the dataset
     df = pd.read_csv('./sample data/SYNTHETIC/synthetic_comprisk.csv')
 
@@ -82,7 +82,8 @@ def import_dataset_SYNTHETIC(norm_mode='standard', features='all'):
     num_Category    = int(np.max(time) * 1.2)
     num_Event       = int(len(np.unique(label)) - 1)
 
-    selecteddata = alldata
+    # For testing purposes, take first 5000 values .head(...)
+    selecteddata = alldata.head(5000)
     feat_list = selecteddata.columns.values
 
     x_dim = len(feat_list)
