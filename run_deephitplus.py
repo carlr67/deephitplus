@@ -40,10 +40,10 @@ def div(x, y):
 ##### MAIN SETTING
 CV_ITERATION                = 5
 RS_ITERATION               = 2
-eval_time = [1*12, 3*12, 5*12, 10*12] # x-month evaluation time (for C-index) for testing
+eval_time = [1*12, 3*12, 5*12] # x-month evaluation time (for C-index) for testing
 val_eval_time = eval_time # Evaluation times for validation
 
-features                    = 'all' # 'all' or 'cox' or 'topxx' or 'pcaxx' or 'feederxx' or 'cutfeederxx'
+features                    = 'filter_anova' # 'all' or 'cox' or 'topxx' or 'pcaxx' or 'feederxx' or 'cutfeederxx'
 seed                        = 1234
 rs_seed                     = 1234
 valid_mode                  = 'ON' # ON / OFF
@@ -93,7 +93,7 @@ SET_param_dict = { # Search sets
     'h_dim_FC'            : [50, 100],
     'num_layers_FC'       : [1, 2],
     'importancecutoff'    : [0.0001, 0.001, 0.01],
-    'top'                 : [20, 40, 60]
+    'top'                 : [10, 20, 40]
 }
 
 
@@ -153,18 +153,13 @@ for train_index, test_index in kf.split(full_data):
         cur_param_dict = get_next_param_dict(searchmode, TRIED_param_dicts, BEST_param_dict, SET_param_dict, DEFAULT_param_dict, num_Event, seed=rs_seed+s_itr)
         TRIED_param_dicts.append(deepcopy(cur_param_dict))
 
-        # Get featureset if needed from hyperparameters
-        feat_list = get_feat_list(features=features, num_Event=num_Event, data=full_data, full_feat_list=full_feat_list)
-        x_dim, data = apply_features(full_data=full_data, full_feat_list=full_feat_list, feat_list=feat_list)
-
-        print("x-dim:", str(x_dim))
-        tr_data     = data[train_index]
+        tr_data     = full_data[train_index]
         tr_time     = time[train_index]
         tr_label    = label[train_index]
         tr_mask1    = mask1[train_index]
         tr_mask2    = mask2[train_index]
 
-        te_data     = data[test_index]
+        te_data     = full_data[test_index]
         te_time     = time[test_index]
         te_label    = label[test_index]
         te_mask1    = mask1[test_index]
@@ -173,6 +168,11 @@ for train_index, test_index in kf.split(full_data):
         # Split into training and validation data
         (tr_data,va_data, tr_time,va_time, tr_label,va_label,
          tr_mask1,va_mask1, tr_mask2,va_mask2)  = train_test_split(tr_data, tr_time, tr_label, tr_mask1, tr_mask2, test_size=0.2, random_state=seed)
+
+        # Get featureset if needed from hyperparameters
+        feat_list = get_feat_list(features=features, num_Event=num_Event, eval_time=eval_time, data=tr_data, full_feat_list=full_feat_list, times=tr_time, labels=tr_label, param_dict=cur_param_dict)
+        x_dim, tr_data, va_data, te_data = apply_features(full_feat_list=full_feat_list, feat_list=feat_list, tr_data=tr_data, va_data=va_data, te_data=te_data)
+        print("x-dim:", str(x_dim))
 
         # Train the model
         model, sess, saver, parameter_name, valid_perf, valid_perf_event, file_path = train_deephit(
@@ -226,17 +226,13 @@ for train_index, test_index in kf.split(full_data):
     alpha, beta, gamma, sigma1, mb_size, keep_prob, lr_train, h_dim_shared, num_layers_shared, h_dim_FC, num_layers_FC, importancecutoff, top = unzip_hyperparam_dict(BEST_param_dict, num_Event)
 
     # Get dataset again since x_dim could have changed
-    feat_list = get_feat_list(features=features, num_Event=num_Event, data=full_data, full_feat_list=full_feat_list)
-    x_dim, data = apply_features(full_data=full_data, full_feat_list=full_feat_list, feat_list=feat_list)
-
-    print("x-dim:", str(x_dim))
-    tr_data     = data[train_index]
+    tr_data     = full_data[train_index]
     tr_time     = time[train_index]
     tr_label    = label[train_index]
     tr_mask1    = mask1[train_index]
     tr_mask2    = mask2[train_index]
 
-    te_data     = data[test_index]
+    te_data     = full_data[test_index]
     te_time     = time[test_index]
     te_label    = label[test_index]
     te_mask1    = mask1[test_index]
@@ -244,6 +240,10 @@ for train_index, test_index in kf.split(full_data):
 
     (tr_data,va_data, tr_time,va_time, tr_label,va_label,
      tr_mask1,va_mask1, tr_mask2,va_mask2)  = train_test_split(tr_data, tr_time, tr_label, tr_mask1, tr_mask2, test_size=0.2, random_state=seed)
+
+    feat_list = get_feat_list(features=features, num_Event=num_Event, eval_time=eval_time, data=tr_data, full_feat_list=full_feat_list, times=tr_time, labels=tr_label, param_dict=BEST_param_dict)
+    x_dim, tr_data, va_data, te_data = apply_features(full_feat_list=full_feat_list, feat_list=feat_list, tr_data=tr_data, va_data=va_data, te_data=te_data)
+    print("x-dim:", str(x_dim))
 
     input_dims                  = { 'x_dim'         : x_dim,
                                     'num_Event'     : num_Event,
