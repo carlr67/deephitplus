@@ -82,8 +82,8 @@ def import_dataset_SYNTHETIC(norm_mode='standard'):
     num_Category    = int(np.max(time) * 1.2)
     num_Event       = int(len(np.unique(label)) - 1)
 
-    # For testing purposes, take first 5000 values .head(...)
-    selecteddata = alldata.head(5000)
+    # For testing purposes, take first 2000 values .head(...)
+    selecteddata = alldata.head(2000)
     feat_list = selecteddata.columns.values
 
     x_dim = len(feat_list)
