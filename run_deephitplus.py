@@ -42,14 +42,15 @@ CV_ITERATION                = 5
 RS_ITERATION               = 2
 eval_time = [1*12, 3*12, 5*12] # x-month evaluation time (for C-index) for testing
 val_eval_time = eval_time # Evaluation times for validation
+NUM_PERMUTATIONS = 20
 
-features                    = 'filter_anova' # 'all' or 'cox' or 'topxx' or 'pcaxx' or 'feederxx' or 'cutfeederxx'
+features                    = 'all' # 'all' or 'cox' or 'topxx' or 'pcaxx' or 'feederxx' or 'cutfeederxx'
 seed                        = 1234
 rs_seed                     = 1234
 valid_mode                  = 'ON' # ON / OFF
 random_search_mode          = 'ON' # ON / OFF
 cv_to_search                = [1, 0, 0, 0, 0] # 0 for "don't perform search on this iteration"
-
+calculate_importances       = 'ON' # ON / OFF (only works in combination with features='all')
 
 dhclass = import_module("class_DeepHitPlus")
 Model_Single = getattr(dhclass, "Model_Single")
@@ -282,7 +283,7 @@ for train_index, test_index in kf.split(full_data):
 
         if eval_horizon >= num_Category:
             print('ERROR: evaluation horizon is out of range')
-            result1[:, t] = result2[:, t] = -1
+            result1[:, t] = -1
         else:
             # calculate F(t | x, Y, t >= t_M) = \sum_{t_M <= \tau < t} P(\tau | x, Y, \tau > t_M)
             risk = np.sum(pred[:,:,:(eval_horizon+1)], axis=2) #risk score until eval_time
@@ -324,6 +325,50 @@ for train_index, test_index in kf.split(full_data):
     print('- CV_' + str(cv_iter) + ' C-INDEX: ')
     print(df1)
     print('--------------------------------------------------------')
+
+
+    ### CALCULATE FEATURE IMPORTANCES (on validation data) - only works if all features are used (features='all')
+
+    if calculate_importances and features == 'all':
+        dfindex = ['Event', 'Feature', 'Permutation', 'Eval. horizon']
+        dfcols = ['Importance']
+        result = pd.DataFrame(columns = dfindex + dfcols)
+        result.set_index(keys=dfindex, inplace=True)
+
+        orig_data = np.copy(va_data)
+
+        for feat_number in range(len(full_feat_list)):
+            feat = full_feat_list[feat_number]
+
+            for perm_iter in range(NUM_PERMUTATIONS):
+                permuted_data = np.copy(orig_data)
+
+                for subnet in range(len(feat_list)):
+                    permuted_data[:, len(full_feat_list)*subnet + feat_number] = np.random.permutation(permuted_data[:, len(full_feat_list)*subnet + feat_number])
+
+                pred = model.predict(permuted_data)
+
+                resultfeat = np.zeros([num_Event, len(eval_time)])
+                for t, t_time in enumerate(eval_time):
+                    eval_horizon = int(t_time)
+
+                    if eval_horizon >= num_Category:
+                        print('ERROR: evaluation horizon is out of range')
+                        resultfeat[:, t] = -1
+                    else:
+                        # calculate F(t | x, Y, t >= t_M) = \sum_{t_M <= \tau < t} P(\tau | x, Y, \tau > t_M)
+                        risk = np.sum(pred[:,:,:(eval_horizon+1)], axis=2) #risk score until eval_time
+
+                        for k in range(num_Event):
+                            resultfeat[k, t] = c_index(risk[:,k], va_time, (va_label[:,0] == k+1).astype(int), eval_horizon) #-1 for no event (not comparable)
+
+                            result.loc[k+1, feat, perm_iter, "Delta t = " + "{:03d}".format(t_time)] = result1[k,t] - resultfeat[k,t]
+                            # since we compare risk_scores, the true label is that event occurs before time horizon
+
+                print("Computed feature importance " + str(feat_number+1) + "/" + str(len(full_feat_list)) + " (" + feat + ") #" + str(perm_iter) + ": " + str(np.average(result1-resultfeat, axis=1).round(4)))
+
+        result.to_csv('./' + file_path + '/results-' + modes + '/' + best_parameter_name + '/result_' + features + '_VAL-IMPORTANCES_cv' + str(cv_iter) + '.csv')
+
 
     cv_iter += 1
     continue_random_search = False
