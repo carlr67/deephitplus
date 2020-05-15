@@ -33,10 +33,13 @@ def get_feat_list(features, num_Event, eval_time, data, full_feat_list, times, l
     elif feature_mode == "filter":
         method = features.split("_")[1]
 
+        # Import packages for the chosen filter method
         if method == "anova":
             print("Using ANOVA p-value (in ascending order) for feature selection")
-            # Import packages for this filter method (ANOVA)
             from sklearn.feature_selection import f_classif
+        elif method == "svm":
+            print("Using SVM absolute coeffs (in descending order) for feature selection")
+            from sklearn import svm
 
         output = pd.DataFrame(full_feat_list, columns=["Feature"])
         output.set_index("Feature", inplace=True)
@@ -58,12 +61,14 @@ def get_feat_list(features, num_Event, eval_time, data, full_feat_list, times, l
                 label_for_calc = ((times.flatten() < ti) & (labels.flatten() == event)) * 1
 
                 if method == "anova":
-                    # Import packages for this filter method (ANOVA)
-                    from sklearn.feature_selection import f_classif
-
                     # Get the ANOVA p-value
                     F, pval = f_classif(data_for_calc, label_for_calc)
                     feature_score = pval
+
+                elif method == "svm":
+                    clf = svm.SVC(kernel='linear')
+                    clf.fit(data_for_calc, label_for_calc)
+                    feature_score = np.absolute(clf.coef_).flatten()
 
                 tmp_result = pd.DataFrame({
                     'Horizon': ti,
@@ -79,9 +84,9 @@ def get_feat_list(features, num_Event, eval_time, data, full_feat_list, times, l
             eventdf = output["Event " + str(event)]
             top = param_dict['top'][event-1]
 
-            if method in ["relieff", "svm", "relieff-surv", "svm-surv"]:
+            if method in ["relieff", "svm"]:
                 ascending = False
-            elif method in["anova", "anova-surv"]:
+            elif method in["anova"]:
                 ascending = True
 
             eventdf = eventdf.sort_values(ascending=ascending)
