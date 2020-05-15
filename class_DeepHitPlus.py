@@ -117,11 +117,11 @@ class Model_Single:
         I_1 = tf.sign(self.k)
 
         #for uncenosred: log P(T=t,K=k|x)
-        tmp1 = tf.reduce_sum(tf.reduce_sum(self.fc_mask1 * self.out, reduction_indices=2), reduction_indices=1, keep_dims=True)
+        tmp1 = tf.reduce_sum(tf.reduce_sum(self.fc_mask1 * self.out, reduction_indices=2), reduction_indices=1, keepdims=True)
         tmp1 = I_1 * log(tmp1)
 
         #for censored: log \sum P(T>t|x)
-        tmp2 = tf.reduce_sum(tf.reduce_sum(self.fc_mask1 * self.out, reduction_indices=2), reduction_indices=1, keep_dims=True)
+        tmp2 = tf.reduce_sum(tf.reduce_sum(self.fc_mask1 * self.out, reduction_indices=2), reduction_indices=1, keepdims=True)
         tmp2 = (1. - I_1) * log(tmp2)
 
         self.LOSS_1 = - tf.reduce_mean(tmp1 + tmp2)
@@ -150,11 +150,11 @@ class Model_Single:
 
             T = tf.matmul(I_2, T) # only remains T_{ij}=1 when event occured for subject i
 
-            tmp_eta = tf.reduce_mean(T * tf.exp(-R/self.sigma1), reduction_indices=1, keep_dims=True)
+            tmp_eta = tf.reduce_mean(T * tf.exp(-R/self.sigma1), reduction_indices=1, keepdims=True)
 
             eta.append(tmp_eta)
         eta = tf.stack(eta, axis=1) #stack referenced on subjects
-        eta = tf.reduce_mean(tf.reshape(eta, [-1, self.num_Event]), reduction_indices=1, keep_dims=True)
+        eta = tf.reduce_mean(tf.reshape(eta, [-1, self.num_Event]), reduction_indices=1, keepdims=True)
 
         self.LOSS_2 = tf.reduce_sum(eta) #sum over num_Events
 

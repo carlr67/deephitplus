@@ -1,72 +1,61 @@
+# Import general python module requirements and functions
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-import random
 import os
 import time as timelib
 import shutil
-from importlib import import_module
 from copy import copy
 from copy import deepcopy
-# import sys
 
-# from termcolor import colored
-from tensorflow.contrib.layers import fully_connected as FC_Net
-from sklearn.metrics import brier_score_loss
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
-from sklearn.decomposition import PCA
 
-
+# Import DeepHit modules and functions
 import import_data as impt
 import utils_network as utils
 from get_features import *
 from train_deephit import *
-
+from class_DeepHitPlus import Model_Single
 from utils_eval import c_index
 
-overall_start_time = timelib.time()
-
-
-_EPSILON = 1e-08
-
-##### USER-DEFINED FUNCTIONS
-def log(x):
-    return tf.log(x + 1e-8)
-
-def div(x, y):
-    return tf.div(x, (y + 1e-8))
-
-##### MAIN SETTING
-CV_ITERATION                = 5
-RS_ITERATION               = 2
-eval_time = [1*12, 3*12, 5*12] # x-month evaluation time (for C-index) for testing
-val_eval_time = eval_time # Evaluation times for validation
-NUM_PERMUTATIONS = 20
-
-features                    = 'hybrid_m_top' # 'all' or 'cox' or 'topxx' or 'pcaxx' or 'feederxx' or 'cutfeederxx'
+##### SETTINGS
+'''
+    Choose DeepHitPlus version and related settings
+    - features: Specifies whether to run DeepHitPlus, FilterDeepHitPlus or HybridDeepHitPlus
+    - path_to_importances: Path to importances folder (only for HybridDeepHitPlus)
+'''
+features                    = 'all' # 'all' or 'filter-...' or 'hybrid-...-...' (see Readme)
 path_to_immportances        = 'output/results-all_rsON/a10_b30_s01_mb050_kp6_lr1E-04_hs100_ns2_hf050-050_nf2-2' # Only required if running HybridDeepHitPlus
-seed                        = 1234
-rs_seed                     = 1234
-valid_mode                  = 'ON' # ON / OFF
-random_search_mode          = 'ON' # ON / OFF
-cv_to_search                = [1, 0, 0, 0, 0] # 0 for "don't perform search on this iteration"
+NUM_PERMUTATIONS            = 20
 calculate_importances       = 'ON' # ON / OFF (only works in combination with features='all')
 
-dhclass = import_module("class_DeepHitPlus")
-Model_Single = getattr(dhclass, "Model_Single")
+'''
+    Choose run settings
+'''
+CV_ITERATION                = 5 # How many iterations for K-Fold cross-validation
+random_search_mode          = 'ON' # ON / OFF
+RS_ITERATION                = 2 # How many iterations for random search
+cv_to_search                = [1, 0, 0, 0, 0] # 0 for "don't perform search on this iteration"
+eval_time                   = [1*12, 3*12, 5*12] # Evaluation times (for C-index) for testing
+val_eval_time               = eval_time # Evaluation times for validation
+valid_mode                  = 'ON' # ON / OFF
+
+'''
+    Random number generation settings
+'''
+seed                        = 1234 # Random seed for dataset splits (training, validation, testing)
+rs_seed                     = 1234 # Random seed for generating parameter sets for random search
 
 
 ##### HYPER-PARAMETERS
-itersettings = {
-    'iteration': 100000,
-    'require_improvement': 5000,
-    'check_improvement': 1000
-}
-active_fn                   = tf.nn.relu
-initial_W                   = tf.contrib.layers.xavier_initializer()
+'''
+    Values for the hyperparameters
+    - DEFAULT_param_dict: What default value to use (if no random search), plus flag for whether the hyperparameter is event-specific (in which case an array is required)
+    - SET_param_dict: Defines the search space for random search (if random search is enabled) - one array with all possibilities per hyperparameter
+'''
 
-DEFAULT_param_dict = { # Tuple (default_value, cause-specific?)
+DEFAULT_param_dict = { # Tuple (default_value, event-specific?)
     'alpha'               : (1.0,                   0), #for log-likelihood loss
     'beta'                : (3.0,                   0), #for ranking loss
     'gamma'               : ([0.0001, 0.0001],      1), #for regularization
@@ -98,23 +87,42 @@ SET_param_dict = { # Search sets
     'top'                 : [5, 10, 20]
 }
 
+'''
+    Further parameter choices
+    - itersettings
+        - 'iteration': Number of iterations for training (or max number if validation mode is used (recommended))
+        - 'require_improvement': In validation mode, training stops if no improvement is found after this number of steps
+        - 'check_improvement': In validation mode, validation performance is checked after this number of steps
+    - active_fn: Choice of activation function for neural network
+    - initial_W: Choice of weights initializer for neural network
+'''
+itersettings = {
+    'iteration': 100000,
+    'require_improvement': 5000,
+    'check_improvement': 1000
+}
+active_fn                   = tf.nn.relu
+initial_W                   = tf.contrib.layers.xavier_initializer()
 
 
 ##### IMPORT DATASET
 '''
     num_Category            = max event/censoring time * 1.2 (to make enough time horizon)
-    num_Event               = number of evetns i.e. len(np.unique(label))-1
+    num_Event               = number of events i.e. len(np.unique(label))-1
     max_length              = maximum number of measurements
-    x_dim                   = data dimension including delta (num_features)
+    x_dim                   = data dimension (num features) as array: [shared network, event-specific network 1, ...]
     mask1, mask2            = used for cause-specific network (FCNet structure)
 '''
 
+overall_start_time = timelib.time()
 
+# Load data
 (x_dim), (full_data, time, label), (mask1, mask2), full_feat_list = impt.import_dataset_SYNTHETIC(norm_mode = 'standard')
 
 _, num_Event, num_Category  = np.shape(mask1)  # dim of mask1: [subj, num_Event, Num_Category]
 
 
+# Arrays for storing final results
 FINALCV = np.zeros([num_Event, len(eval_time), CV_ITERATION])
 FINALRS = np.zeros([num_Event, len(eval_time), RS_ITERATION])
 
@@ -122,13 +130,13 @@ FINALRS = np.zeros([num_Event, len(eval_time), RS_ITERATION])
 # K-fold Cross-Validation for Test Data
 kf = KFold(n_splits=CV_ITERATION, shuffle=True, random_state=seed)
 cv_iter = 0
-continue_random_search = True
 best_parameter_name = ''
 
 modes = "_".join([features, "rs" + random_search_mode])
 
 BEST_param_dict = {key: copy(DEFAULT_param_dict[key][0]) for key in DEFAULT_param_dict}
 
+# Loop for each cross-validation (train and test split)
 for train_index, test_index in kf.split(full_data):
     print()
     print()
@@ -145,8 +153,8 @@ for train_index, test_index in kf.split(full_data):
         print("Conducting RANDOM search")
         S_ITERATION = RS_ITERATION
 
+    # Loop for random search iterations (or if no random search, just one iteration)
     TRIED_param_dicts = []
-
     min_s_valid = [0,0,0]
     best_s_itr = 0
     for s_itr in range(S_ITERATION):
@@ -171,7 +179,7 @@ for train_index, test_index in kf.split(full_data):
         (tr_data,va_data, tr_time,va_time, tr_label,va_label,
          tr_mask1,va_mask1, tr_mask2,va_mask2)  = train_test_split(tr_data, tr_time, tr_label, tr_mask1, tr_mask2, test_size=0.2, random_state=seed)
 
-        # Get featureset if needed from hyperparameters
+        # Get feature set if needed from hyperparameters
         feat_list = get_feat_list(features=features, num_Event=num_Event, eval_time=eval_time, data=tr_data, full_feat_list=full_feat_list, times=tr_time, labels=tr_label, param_dict=cur_param_dict, cv_iter=cv_iter, path_to_immportances=path_to_immportances)
         x_dim, tr_data, va_data, te_data = apply_features(full_feat_list=full_feat_list, feat_list=feat_list, tr_data=tr_data, va_data=va_data, te_data=te_data)
         print("x-dim:", str(x_dim))
@@ -202,7 +210,7 @@ for train_index, test_index in kf.split(full_data):
 
         print("    Validation performance: " + str(round(valid_perf,3)) + "  |  " + str([round(x,3) for x in valid_perf_event]))
 
-        # Update search
+        # Update random search - check if improvement on previous best hyperparameters
         tmp_s_valid = valid_perf_event
 
         if (np.mean(tmp_s_valid) > np.mean(min_s_valid)):
@@ -257,7 +265,7 @@ for train_index, test_index in kf.split(full_data):
                                   'active_fn'         : active_fn,
                                   'initial_W'         : initial_W }
 
-    ##### PREDICTION & EVALUATION
+    ##### PREDICTION & EVALUATION ON TEST DATASET
     if valid_mode == 'ON':
 
         ##### CREATE DEEPHIT NETWORK
@@ -296,6 +304,7 @@ for train_index, test_index in kf.split(full_data):
 
     ### SAVE RESULTS
 
+    # Make directories if they don't yet exist
     file_path = 'output'
     if not os.path.exists(file_path + '/results-' + modes + '/' + best_parameter_name + '/'):
         os.makedirs(file_path + '/results-' + modes + '/' + best_parameter_name + '/')
@@ -314,7 +323,7 @@ for train_index, test_index in kf.split(full_data):
     df1 = pd.DataFrame(result1, index = row_header, columns=col_header1)
     df1.to_csv('./' + file_path + '/results-' + modes + '/' + best_parameter_name + '/result_' + features + '_CINDEX_cv' + str(cv_iter) + '.csv')
 
-    ### Save model for later use (feature importance)
+    ### Save trained model for later use
     saver.save(sess, file_path + '/results-' + modes + '/' + best_parameter_name + '/models/dhmodel_cv' + str(cv_iter))
     shutil.rmtree(file_path + '/models-' + modes + '/')
 
@@ -338,12 +347,15 @@ for train_index, test_index in kf.split(full_data):
 
         orig_data = np.copy(va_data)
 
+        # Iterate through all features
         for feat_number in range(len(full_feat_list)):
             feat = full_feat_list[feat_number]
 
+            # Average a number of random permutations to get stability in the importance figures
             for perm_iter in range(NUM_PERMUTATIONS):
                 permuted_data = np.copy(orig_data)
 
+                # One feature affects multiple parts of the data due to the structure of feat_list (shared subnetwork and one for each event-specific sub-network) - make sure all these are permuted
                 for subnet in range(len(feat_list)):
                     permuted_data[:, len(full_feat_list)*subnet + feat_number] = np.random.permutation(permuted_data[:, len(full_feat_list)*subnet + feat_number])
 
@@ -360,6 +372,7 @@ for train_index, test_index in kf.split(full_data):
                         # calculate F(t | x, Y, t >= t_M) = \sum_{t_M <= \tau < t} P(\tau | x, Y, \tau > t_M)
                         risk = np.sum(pred[:,:,:(eval_horizon+1)], axis=2) #risk score until eval_time
 
+                        # Calculate permutation importance for each eval horizon and event
                         for k in range(num_Event):
                             resultfeat[k, t] = c_index(risk[:,k], va_time, (va_label[:,0] == k+1).astype(int), eval_horizon) #-1 for no event (not comparable)
 
@@ -370,18 +383,11 @@ for train_index, test_index in kf.split(full_data):
 
         result.to_csv('./' + file_path + '/results-' + modes + '/' + best_parameter_name + '/result_' + features + '_VAL-IMPORTANCES_cv' + str(cv_iter) + '.csv')
 
-
     cv_iter += 1
-    continue_random_search = False
 
 ### FINAL MEAN/STD FOR CV RUN
 
-if random_search_mode == 'ON' or greedy_search_mode == 'ON':
-    paramfolderstring = '/' + best_parameter_name
-else:
-    paramfolderstring = ''
-
-# c-index result
+# c-index result - write to output
 df2_mean = pd.DataFrame(np.mean(FINALCV, axis=2), index = row_header, columns=col_header1)
 df2_std  = pd.DataFrame(np.std(FINALCV, axis=2), index = row_header, columns=col_header1)
 df2_mean.to_csv('./' + file_path + '/results-' + modes + '/result_' + features + '_CINDEX_FINAL_MEAN.csv')
