@@ -128,9 +128,18 @@ def train_deephit(
                                   'initial_W'         : initial_W }
 
     # Put cutoffs into parameter name only if feeder is used
-    if features[0:9] =='cutfeeder' or features[0:10] == 'cutpfeeder':
+    feature_mode = features.split("_")[0]
+
+    if feature_mode == "hybrid":
+        metric = features.split("_")[1]
+        cutofftype = features.split("_")[2]
+    else:
+        metric = None
+        cutofftype = None
+
+    if (feature_mode == "hybrid" and cutofftype == "cut"):
         cutoffsstring = '_cut' + "-".join(str('%04.0f' %(10000*c)) for c in importancecutoff)
-    elif features[0:6] == "filter" or features in ["toppfeeder", "topfeeder"]:
+    elif feature_mode == "filter" or (feature_mode == "hybrid" and cutofftype == "top"):
         cutoffsstring = '_top' + "-".join(str('%02.0f' %(c)) for c in top)
     else:
         cutoffsstring = ''
