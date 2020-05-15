@@ -40,6 +40,9 @@ def get_feat_list(features, num_Event, eval_time, data, full_feat_list, times, l
         elif method == "svm":
             print("Using SVM absolute coeffs (in descending order) for feature selection")
             from sklearn import svm
+        elif method == "relieff":
+            print("Using ReliefF feature importances (in descending order) for feature selection")
+            from skrebate import ReliefF
 
         output = pd.DataFrame(full_feat_list, columns=["Feature"])
         output.set_index("Feature", inplace=True)
@@ -69,6 +72,11 @@ def get_feat_list(features, num_Event, eval_time, data, full_feat_list, times, l
                     clf = svm.SVC(kernel='linear')
                     clf.fit(data_for_calc, label_for_calc)
                     feature_score = np.absolute(clf.coef_).flatten()
+
+                elif method == "relieff":
+                    fs = ReliefF(discrete_threshold=10, n_features_to_select=100, n_jobs=-1, n_neighbors=100, verbose=True)
+                    fs.fit(data_for_calc, label_for_calc)
+                    feature_score = fs.feature_importances_
 
                 tmp_result = pd.DataFrame({
                     'Horizon': ti,
