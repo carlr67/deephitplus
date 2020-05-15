@@ -22,7 +22,7 @@ def apply_features(full_feat_list, feat_list, tr_data, va_data, te_data):
 
     return DIM, new_tr_data, new_va_data, new_te_data
 
-def get_feat_list(features, num_Event, eval_time, data, full_feat_list, times, labels, param_dict):
+def get_feat_list(features, num_Event, eval_time, data, full_feat_list, times, labels, param_dict, cv_iter, path_to_immportances):
     # Returns the feature list for the dataset depending on a chosen feature selection mode
 
     feature_mode = features.split("_")[0]
@@ -107,6 +107,71 @@ def get_feat_list(features, num_Event, eval_time, data, full_feat_list, times, l
 
             event_feat_list.append(filteredeventdf.index.values)
 
+
+        shared_feat_list = list(set.intersection(*[set(x) for x in event_feat_list]))
+
+        feat_list = event_feat_list.copy()
+        feat_list.insert(0, shared_feat_list)
+
+    elif feature_mode == "hybrid":
+        metric = features.split("_")[1]
+        cutofftype = features.split("_")[2]
+
+        # Load feature importance and get the most important features
+        result = pd.read_csv(path_to_immportances + '/result_all_VAL-IMPORTANCES_cv' + str(cv_iter) + '.csv')
+
+        # For using the p-value that a feature importance > 0
+        if metric == 'p':
+            avgdf0 = result.groupby(["Event", "Feature", "Permutation"]).mean()
+
+            dim1 = len(avgdf0.index.get_level_values(0).unique())
+            dim2 = len(avgdf0.index.get_level_values(1).unique())
+            a = avgdf0.values.reshape((dim1, dim2, -1))
+
+            from scipy.stats import ttest_1samp
+            r = ttest_1samp(a=a, popmean=0, axis=2)
+
+            analysisdf = avgdf0.groupby(["Event", "Feature"]).mean()
+            analysisdf["statistic"] = r[0].flatten()
+            analysisdf["Importance"] = r[1].flatten()/2 # Divide by 2 to get one-tailed test
+
+            avgdf = analysisdf.query("statistic>0") # Only take ones with positive importance
+            # print(avgdf)
+
+            sortascending = True
+
+        # For using 'raw' feature importances
+        elif metric == 'm':
+            avgdf = result.groupby(["Event", "Feature"]).mean()
+            sortascending = False
+
+        event_feat_list = []
+        for e in range(num_Event):
+            event = e + 1
+            eventdf = avgdf.loc[event]
+
+            print("Retrieving feature importances for event {}".format(event))
+
+            eventdf.index.names = ["Feature (Event " + str(event) + ")"]
+            eventdf.sort_values(by="Importance", ascending=sortascending, inplace=True)
+
+            if metric == 'm' and cutofftype == 'cut':
+                cutoff = param_dict['importancecutoff'][e]
+                filteredeventdf = eventdf.query("Importance >= " + str(cutoff))
+                print("Using features with raw importance (M) above {}:".format(cutoff))
+            elif metric == 'p' and cutofftype == 'cut':
+                cutoff = param_dict['importancecutoff'][e]
+                filteredeventdf = eventdf.query("Importance <= " + str(cutoff))
+                print("Using features with importance p-value (P) below {}:".format(cutoff))
+            elif cutofftype == 'top':
+                n_top = param_dict['top'][e]
+                filteredeventdf = eventdf.iloc[0:n_top,:].copy()
+                print("Using top {} features using metric({}) from:".format(n_top, metric))
+
+            print(eventdf)
+            print()
+
+            event_feat_list.append(filteredeventdf.index.values)
 
         shared_feat_list = list(set.intersection(*[set(x) for x in event_feat_list]))
 

@@ -44,7 +44,8 @@ eval_time = [1*12, 3*12, 5*12] # x-month evaluation time (for C-index) for testi
 val_eval_time = eval_time # Evaluation times for validation
 NUM_PERMUTATIONS = 20
 
-features                    = 'all' # 'all' or 'cox' or 'topxx' or 'pcaxx' or 'feederxx' or 'cutfeederxx'
+features                    = 'hybrid_m_top' # 'all' or 'cox' or 'topxx' or 'pcaxx' or 'feederxx' or 'cutfeederxx'
+path_to_immportances        = 'output/results-all_rsON/a10_b30_s01_mb050_kp6_lr1E-04_hs100_ns2_hf050-050_nf2-2' # Only required if running HybridDeepHitPlus
 seed                        = 1234
 rs_seed                     = 1234
 valid_mode                  = 'ON' # ON / OFF
@@ -78,7 +79,7 @@ DEFAULT_param_dict = { # Tuple (default_value, cause-specific?)
     'h_dim_FC'            : ([50, 50],              1),
     'num_layers_FC'       : ([5, 5],                1),
     'importancecutoff'    : ([0.001, 0.001],        1),
-    'top'                 : ([40, 40],              1)
+    'top'                 : ([10, 10],              1)
 }
 
 SET_param_dict = { # Search sets
@@ -94,7 +95,7 @@ SET_param_dict = { # Search sets
     'h_dim_FC'            : [50, 100],
     'num_layers_FC'       : [1, 2],
     'importancecutoff'    : [0.0001, 0.001, 0.01],
-    'top'                 : [10, 20, 40]
+    'top'                 : [5, 10, 20]
 }
 
 
@@ -171,7 +172,7 @@ for train_index, test_index in kf.split(full_data):
          tr_mask1,va_mask1, tr_mask2,va_mask2)  = train_test_split(tr_data, tr_time, tr_label, tr_mask1, tr_mask2, test_size=0.2, random_state=seed)
 
         # Get featureset if needed from hyperparameters
-        feat_list = get_feat_list(features=features, num_Event=num_Event, eval_time=eval_time, data=tr_data, full_feat_list=full_feat_list, times=tr_time, labels=tr_label, param_dict=cur_param_dict)
+        feat_list = get_feat_list(features=features, num_Event=num_Event, eval_time=eval_time, data=tr_data, full_feat_list=full_feat_list, times=tr_time, labels=tr_label, param_dict=cur_param_dict, cv_iter=cv_iter, path_to_immportances=path_to_immportances)
         x_dim, tr_data, va_data, te_data = apply_features(full_feat_list=full_feat_list, feat_list=feat_list, tr_data=tr_data, va_data=va_data, te_data=te_data)
         print("x-dim:", str(x_dim))
 
@@ -242,7 +243,7 @@ for train_index, test_index in kf.split(full_data):
     (tr_data,va_data, tr_time,va_time, tr_label,va_label,
      tr_mask1,va_mask1, tr_mask2,va_mask2)  = train_test_split(tr_data, tr_time, tr_label, tr_mask1, tr_mask2, test_size=0.2, random_state=seed)
 
-    feat_list = get_feat_list(features=features, num_Event=num_Event, eval_time=eval_time, data=tr_data, full_feat_list=full_feat_list, times=tr_time, labels=tr_label, param_dict=BEST_param_dict)
+    feat_list = get_feat_list(features=features, num_Event=num_Event, eval_time=eval_time, data=tr_data, full_feat_list=full_feat_list, times=tr_time, labels=tr_label, param_dict=BEST_param_dict, cv_iter=cv_iter, path_to_immportances=path_to_immportances)
     x_dim, tr_data, va_data, te_data = apply_features(full_feat_list=full_feat_list, feat_list=feat_list, tr_data=tr_data, va_data=va_data, te_data=te_data)
     print("x-dim:", str(x_dim))
 
