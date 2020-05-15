@@ -33,6 +33,11 @@ def get_feat_list(features, num_Event, eval_time, data, full_feat_list, times, l
     elif feature_mode == "filter":
         method = features.split("_")[1]
 
+        if method == "anova":
+            print("Using ANOVA p-value (in ascending order) for feature selection")
+            # Import packages for this filter method (ANOVA)
+            from sklearn.feature_selection import f_classif
+
         output = pd.DataFrame(full_feat_list, columns=["Feature"])
         output.set_index("Feature", inplace=True)
 
@@ -80,6 +85,11 @@ def get_feat_list(features, num_Event, eval_time, data, full_feat_list, times, l
                 ascending = True
 
             eventdf = eventdf.sort_values(ascending=ascending)
+
+            print("Using top {} features from:".format(top))
+            print(eventdf)
+            print()
+
             filteredeventdf = eventdf.iloc[0:top].copy()
 
             event_feat_list.append(filteredeventdf.index.values)
