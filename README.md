@@ -5,7 +5,7 @@ Code for the Paper "Automatic Feature Selection for Survival Analysis with Deep 
 I will be uploading my code from my previous research as a master's student in the coming weeks, and hope it can be helpful. Please bear with me, as I'll try to do some clean-up for better usage too.
 
 ### Current status of upload
-The currently uploaded code base has basic functionality to run DeepHitPlus (excl. feature selection methods). I'll be looking to add the functionality for FilterDeepHitPlus and HybridDeepHitPlus in due course.
+The currently uploaded code base has full functionality to run DeepHitPlus, FilterDeepHitPlus and HybridDeepHitPlus (it does not include SparseDeepHitPlus and AttentiveDeepHitPlus, as these were experimental and not covered in the NIPS Workshop Paper, although I encourage further research on these ideas with the charm of 'inbuilt' feature selection). As a next step, I would like to edit this README file with short instructions on how to run the models.
 
 ## References
 
