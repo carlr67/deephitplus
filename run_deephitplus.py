@@ -19,26 +19,38 @@ from train_deephit import *
 from class_DeepHitPlus import Model_Single
 from utils_eval import c_index
 
+overall_start_time = timelib.time()
+
 ##### SETTINGS
+'''
+    Load data and data settings
+'''
+(x_dim), (full_data, time, label), (mask1, mask2), full_feat_list = impt.import_dataset_SYNTHETIC(norm_mode = 'standard')
+eval_time                   = [1*12, 3*12, 5*12] # Evaluation times (for C-index) for testing
+
 '''
     Choose DeepHitPlus version and related settings
     - features: Specifies whether to run DeepHitPlus, FilterDeepHitPlus or HybridDeepHitPlus
     - path_to_importances: Path to importances folder (only for HybridDeepHitPlus)
 '''
 features                    = 'all' # 'all' or 'filter-...' or 'hybrid-...-...' (see Readme)
-path_to_immportances        = 'output/results-all_rsON/a10_b30_s01_mb050_kp6_lr1E-04_hs100_ns2_hf050-050_nf2-2' # Only required if running HybridDeepHitPlus
-NUM_PERMUTATIONS            = 20
+
+# Only relevant if running with features='all' preparing for HybridDeepHitPlus
 calculate_importances       = 'ON' # ON / OFF (only works in combination with features='all')
+NUM_PERMUTATIONS            = 20
+
+# Only relevant if running HybridDeepHitPlus (features='hybrid-...-...')
+path_to_immportances        = 'output/results-all_rsON/a10_b30_s01_mb050_kp6_lr1E-04_hs100_ns2_hf050-050_nf2-2' # Only required if running HybridDeepHitPlus
+
+
 
 '''
     Choose run settings
 '''
-CV_ITERATION                = 5 # How many iterations for K-Fold cross-validation
 random_search_mode          = 'ON' # ON / OFF
 RS_ITERATION                = 2 # How many iterations for random search
+CV_ITERATION                = 5 # How many iterations for K-Fold cross-validation
 cv_to_search                = [1, 0, 0, 0, 0] # 0 for "don't perform search on this iteration"
-eval_time                   = [1*12, 3*12, 5*12] # Evaluation times (for C-index) for testing
-val_eval_time               = eval_time # Evaluation times for validation
 valid_mode                  = 'ON' # ON / OFF
 
 '''
@@ -105,7 +117,7 @@ active_fn                   = tf.nn.relu
 initial_W                   = tf.contrib.layers.xavier_initializer()
 
 
-##### IMPORT DATASET
+##### DATASET
 '''
     num_Category            = max event/censoring time * 1.2 (to make enough time horizon)
     num_Event               = number of events i.e. len(np.unique(label))-1
@@ -114,13 +126,8 @@ initial_W                   = tf.contrib.layers.xavier_initializer()
     mask1, mask2            = used for cause-specific network (FCNet structure)
 '''
 
-overall_start_time = timelib.time()
-
-# Load data
-(x_dim), (full_data, time, label), (mask1, mask2), full_feat_list = impt.import_dataset_SYNTHETIC(norm_mode = 'standard')
-
 _, num_Event, num_Category  = np.shape(mask1)  # dim of mask1: [subj, num_Event, Num_Category]
-
+val_eval_time               = eval_time # Evaluation times for validation
 
 # Arrays for storing final results
 FINALCV = np.zeros([num_Event, len(eval_time), CV_ITERATION])
