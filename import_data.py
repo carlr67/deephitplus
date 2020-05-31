@@ -1,4 +1,9 @@
-# For survival analysis on PLCO | DeepHit
+'''
+Functions to import a dataset for DeepHitPlus
+
+Code by Carl Rietschel and Changhee Lee
+https://github.com/carlr67/deephitplus
+'''
 
 import numpy as np
 import pandas as pd

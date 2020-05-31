@@ -1,3 +1,10 @@
+'''
+Function to train a DeepHitPlus model
+
+Code by Carl Rietschel and Changhee Lee
+https://github.com/carlr67/deephitplus
+'''
+
 ##### FUNCTIONS FOR NETWORK TRAINING
 
 import numpy as np

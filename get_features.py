@@ -1,5 +1,9 @@
-# DeepHitPlus
-#
+'''
+Functions to select features based on various feature selection settings
+
+Code by Carl Rietschel
+https://github.com/carlr67/deephitplus
+'''
 
 import pandas as pd
 import numpy as np

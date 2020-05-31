@@ -1,3 +1,10 @@
+'''
+Main file to run DeepHitPlus models
+
+Code by Carl Rietschel and Changhee Lee
+https://github.com/carlr67/deephitplus
+'''
+
 # Import general python module requirements and functions
 import numpy as np
 import pandas as pd
@@ -33,7 +40,7 @@ eval_time                   = [1*12, 3*12, 5*12] # Evaluation times (for C-index
     - features: Specifies whether to run DeepHitPlus, FilterDeepHitPlus or HybridDeepHitPlus
     - path_to_importances: Path to importances folder (only for HybridDeepHitPlus)
 '''
-features                    = 'all' # 'all' or 'filter_...' or 'hybrid_..._...' or 'sparse' (see Readme)
+features                    = 'filter_anova' # 'all' or 'filter_...' or 'hybrid_..._...' or 'sparse' (see Readme)
 
 # Only relevant if running with features='all' preparing for HybridDeepHitPlus
 calculate_importances       = 'ON' # ON / OFF (only works in combination with features='all')

@@ -1,4 +1,9 @@
 '''
+Class to build DeepHitPlus network using tensorflow
+
+Code by Carl Rietschel and Changhee Lee
+https://github.com/carlr67/deephitplus
+
 Modifcation List:
     - Corrected error (no more layer combining inputs before cause-specific subnetworks)
     - Changed layer numbers and sizes to original DeepHit paper
