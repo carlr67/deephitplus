@@ -6,7 +6,7 @@ This repository contains code for *Automatic Feature Selection for Survival Anal
 
 
 ## Introduction
-Survival analysis is an important branch of statistics and machine learning, and is applied in many fields, including medicine and finance. It requires different models to traditional classification or regression problems due to the notion of time, and incomplete observations due to *censoring* (e.g. a medical trial limited to 10 years can only record observations up to that maximum time horizon). Examples for survival analysis questions in the medical realm include
+Survival analysis is an important branch of statistics and machine learning, and is applied in many fields, including medicine and finance. It requires different models to traditional classification or regression problems due to the notion of time, and incomplete observations due to *censoring* (e.g. a medical trial limited to 10 years can only record observations up to that maximum time horizon). *Competing risks* refer to more than one event of interest being analysed. Examples for survival analysis questions in the medical realm include
 - What is the likelihood of developing a cancer in 1, 3 or 5 years?
 - What is the impact of a treatment on a patient's probability of survival?
 
@@ -23,11 +23,10 @@ My research developed extensions to the model [DeepHit](#original-aaai-deephit-p
 ### Uploaded code
 The currently uploaded code base has full functionality to run *DeepHitPlus*, *FilterDeepHitPlus* and *HybridDeepHitPlus*.
 
-It does not include *SparseDeepHitPlus* and *AttentiveDeepHitPlus*, as these are separate implementations (please contact me if you are interested in these too). I encourage further research on these ideas with the charm of 'inbuilt' feature selection and model interpretability).
+It does not include *SparseDeepHitPlus* and *AttentiveDeepHitPlus*, as these are separate implementations (please contact me if you are interested in these too). I encourage further research on these ideas with the charm of inbuilt feature selection and model interpretability.
 
-### Acknowledgements
+### Acknowledgements
 I would like to thank my MSc thesis supervisor [Professor Mihaela van der Schaar](https://www.turing.ac.uk/people/researchers/mihaela-van-der-schaar) and her inspiring research group, in particular [Jinsung Yoon](https://sites.google.com/view/jinsungyoon) and [Changhee Lee](http://www.vanderschaar-lab.com/team/), for their invaluable support, advice and insights in conducting this research.
-
 
 ## References
 
@@ -58,7 +57,7 @@ Reference: C. Lee, W. R. Zame, J. Yoon, M. van der Schaar, "DeepHit: A Deep Lear
 ### Step 2: Choose DeepHitPlus version and related settings
 Edit the settings in the second part of the `SETTINGS` section in `run_deephitplus.py` to select which model to run.
 
-#### DeepHitPlus (no feature selection) ####
+#### DeepHitPlus (no feature selection) ####
 1. Set `features = 'all'` to run the model without feature selection
 2. If running as a preparation for *HybridDeepHitPlus*, set `calculate_importances = 'ON'`, and choose a `NUM_PERMUTATIONS` (20 should work fine)
 
@@ -82,14 +81,14 @@ Edit the settings in the second part of the `SETTINGS` section in `run_deephitpl
    * `random_search_mode` toggles whether to use random search, and `RS_ITERATION` the number of iterations (more usually better, dependent on computation time)
    * `CV_ITERATION` chooses the number for K-fold cross-validation, and `cv_to_search` which cross-validations iteration to conduct random search on (usually the first will suffice)
    * `valid_mode` toggles whether to use validation for early stopping during training (recommended)
-2. Further selections of the random number generating seed are possible in the section below
+2. Further selections of the random number generating seed are possible in the subsequent code section
 
 ### Step 4: Choose hyperparameters (or search space)
 See [references](#references) for more details on each parameter
 1. If conducting no random search, edit the hyperparameters in `DEFAULT_param_dict` for the search
 2. If conducting random search, edit the hyperparameter search sets in `SET_param_dict` to define the search space
 
-### Step 5: Install dependencies
+### Step 5: Install dependencies
 To run the code, the following python packages are required:
 1. `numpy`
 2. `pandas`
@@ -99,4 +98,4 @@ To run the code, the following python packages are required:
 
 ### Step 6: Run the model
 1. Run using `python run_deephitplus.py` in your terminal
-2. Output and trained models are saved in the `./output/` folder for use, using the model type (feature selection method and random search mode), as well as the hyperparameter string as folder reference
+2. Output and trained models are saved in the `./output/` folder for use, using the model type (feature selection method and random search mode), as well as a string generated from the hyperparameters as folder reference
