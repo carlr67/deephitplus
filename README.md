@@ -21,9 +21,9 @@ My research developed extensions to the model [DeepHit](#original-aaai-deephit-p
 - **AttentiveDeepHitPlus**: This model was an experimental part of my MSc thesis, using a separate network to generate attention masks for soft feature selection. Despite underperforming in my first experiments, potential benefits include allowing example-specific feature selection and improved interpretability.
 
 ### Uploaded code
-The currently uploaded code base has full functionality to run *DeepHitPlus*, *FilterDeepHitPlus* and *HybridDeepHitPlus*.
+The currently uploaded code base has full functionality to run *DeepHitPlus*, *FilterDeepHitPlus*, *HybridDeepHitPlus* and *SparseDeepHitPlus*.
 
-It does not include *SparseDeepHitPlus* and *AttentiveDeepHitPlus*, as these are separate implementations (please contact me if you are interested in these too). I encourage further research on these ideas with the charm of inbuilt feature selection and model interpretability.
+It does not include *AttentiveDeepHitPlus*, as this is a separate implementation (please contact me if you are interested in these too). I encourage further research on these ideas with the charm of inbuilt feature selection and model interpretability.
 
 ### Acknowledgements
 I would like to thank my MSc thesis supervisor [Professor Mihaela van der Schaar](https://www.turing.ac.uk/people/researchers/mihaela-van-der-schaar) and her inspiring research group, in particular [Jinsung Yoon](https://sites.google.com/view/jinsungyoon) and [Changhee Lee](http://www.vanderschaar-lab.com/team/), for their invaluable support, advice and insights in conducting this research.
@@ -63,18 +63,22 @@ Edit the settings in the second part of the `SETTINGS` section in `run_deephitpl
 
 #### FilterDeepHitPlus ####
 1. Set `features = ...` to run the model with feature selection using a filter method, with the following three options
-   * `'filter-anova'` for feature selection using the ANOVA p-value
-   * `'filter-svm'` for feature selection using SVM weights
-   * `'filter-relieff'` for feature selection using ReliefF feature importances
+   * `'filter_anova'` for feature selection using the ANOVA p-value
+   * `'filter_svm'` for feature selection using SVM weights
+   * `'filter_relieff'` for feature selection using ReliefF feature importances
 
 #### HybridDeepHitPlus ####
 1. First run the model as DeepHitPlus (with no feature selection) setting `calculate_importances = 'ON'`. This outputs feature importances in a results folder that HybridDeepHitPlus will use as its feature selection
 2. Set `features = ...` to run the model as HybridDeepHitPlus, with the following four options:
-   * `'hybrid-m-top'` for feature selection using the raw importance values, treating the number of features (top N) chosen per event as a hyperparameter
-   * `'hybrid-m-cut'` for feature selection using the raw importance values, treating a cutoff value for feature importance per event as a hyperparameter
-   * `'hybrid-p-top'` for feature selection using the p-value that the raw feature importance > 0, treating the number of features (top N) chosen per event as a hyperparameter
-   * `'hybrid-p-cut'` for feature selection using the p-value that the raw feature importance > 0, treating a cutoff value for feature importance per event as a hyperparameter
+   * `'hybrid_m_top'` for feature selection using the raw importance values, treating the number of features (top N) chosen per event as a hyperparameter
+   * `'hybrid_m_cut'` for feature selection using the raw importance values, treating a cutoff value for feature importance per event as a hyperparameter
+   * `'hybrid_p_top'` for feature selection using the p-value that the raw feature importance > 0, treating the number of features (top N) chosen per event as a hyperparameter
+   * `'hybrid_p_cut'` for feature selection using the p-value that the raw feature importance > 0, treating a cutoff value for feature importance per event as a hyperparameter
 3. Set `path_to_immportances` to the path to the results output folder containing the importances (see the first step in this list)
+
+#### SparseDeepHitPlus ####
+1. Set `features = 'sparse'` to run the model as SparseDeepHitPlus
+2. Be sure to review the regularisation hyperparameter `gamma` below
 
 ### Step 3: Edit the run settings (if desired)
 1. Make selections in the section `run settings`
