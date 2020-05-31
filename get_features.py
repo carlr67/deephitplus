@@ -27,7 +27,7 @@ def get_feat_list(features, num_Event, eval_time, data, full_feat_list, times, l
 
     feature_mode = features.split("_")[0]
 
-    if feature_mode == "all":
+    if feature_mode in ["all", "sparse"]:
         feat_list = [full_feat_list for i in range(num_Event + 1)]
 
     elif feature_mode == "filter":

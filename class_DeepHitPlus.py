@@ -26,7 +26,12 @@ def div(x, y):
 
 
 class Model_Single:
-    def __init__(self, sess, name, mb_size, input_dims, network_settings):
+    def __init__(self, sess, name, mb_size, input_dims, network_settings, feature_mode="all"):
+        if feature_mode in ["all", "hybrid", "filter"]:
+            self.version = "standard" # "standard" for DeepHitPlus, FilterDeepHitPlus, HybridDeepHitPlus, "sparse" for SparseDeepHitPlus
+        elif feature_mode == "sparse":
+            self.version = "sparse"
+
         self.sess               = sess
         self.name               = name
         self.mb_size            = mb_size
@@ -70,7 +75,20 @@ class Model_Single:
 
             ##### SHARED SUBNETWORK w/ FCNETS
             n_inputs = self.x_dim_lst[0]
-            shared_out = utils.create_FCNet(self.x, int(self.num_layers_shared), int(self.h_dim_shared), self.active_fn, int(self.h_dim_shared), self.active_fn, self.initial_W, self.keep_prob)
+
+            if self.version == "standard":
+                shared_inputs = self.x[:, 0:n_inputs]
+
+            elif self.version == "sparse":
+                shared_o2o_weights = tf.Variable(self.initial_W([n_inputs]), name="shared_o2o_weights")
+                shared_inputs = tf.multiply(self.x[:, 0:n_inputs], shared_o2o_weights)
+
+                shared_o2o_regularizer = tf.contrib.layers.l1_regularizer(
+                   scale=tf.reduce_mean(self.c), scope=None
+                )
+                tf.contrib.layers.apply_regularization(shared_o2o_regularizer, weights_list=[shared_o2o_weights])
+
+            shared_out = utils.create_FCNet(shared_inputs, int(self.num_layers_shared), int(self.h_dim_shared), self.active_fn, int(self.h_dim_shared), self.active_fn, self.initial_W, self.keep_prob)
             #last_x = self.x  #for residual connection
 
             #inputs = tf.concat([last_x, shared_out], axis=1)
@@ -88,9 +106,21 @@ class Model_Single:
                 important_x = self.x[:, start:end]  #for residual connection
 
                 inputs = tf.concat([important_x, shared_out], axis=1)
-                n_inputs = self.x_dim_lst[0] + end - start
+                n_inputs_event = self.x_dim_lst[_event + 1] + + self.h_dim_shared
 
-                cs_out = utils.create_FCNet(inputs, int(self.num_layers_FC[_event]), int(self.h_dim_FC[_event]), self.active_fn, int(self.h_dim_FC[_event]), self.active_fn, self.initial_W, self.keep_prob)
+                if self.version == "standard":
+                    cs_out = utils.create_FCNet(inputs, int(self.num_layers_FC[_event]), int(self.h_dim_FC[_event]), self.active_fn, int(self.h_dim_FC[_event]), self.active_fn, self.initial_W, self.keep_prob)
+
+                elif self.version == "sparse":
+                    specific_o2o_weights = tf.Variable(self.initial_W([int(n_inputs_event)]), name="specific_o2o_weights_"+str(_event+1))
+                    specific_inputs = tf.multiply(inputs, specific_o2o_weights)
+
+                    specific_o2o_regularizer = tf.contrib.layers.l1_regularizer(
+                       scale=self.c[_event], scope=None
+                    )
+                    tf.contrib.layers.apply_regularization(specific_o2o_regularizer, weights_list=[specific_o2o_weights])
+
+                    cs_out = utils.create_FCNet(specific_inputs, int(self.num_layers_FC[_event]), int(self.h_dim_FC[_event]), self.active_fn, int(self.h_dim_FC[_event]), self.active_fn, self.initial_W, self.keep_prob)
 
                 out.append(cs_out)
 
@@ -108,7 +138,7 @@ class Model_Single:
             self.loss_Log_Likelihood()      #get loss1: Log-Likelihood loss
             self.loss_Ranking()             #get loss2: Ranking loss
 
-            self.LOSS_TOTAL = self.a*self.LOSS_1 + self.b*self.LOSS_2
+            self.LOSS_TOTAL = self.a*self.LOSS_1 + self.b*self.LOSS_2 + tf.losses.get_regularization_loss()
             self.solver = tf.train.AdamOptimizer(learning_rate=self.lr_rate).minimize(self.LOSS_TOTAL)
 
 

@@ -144,6 +144,11 @@ def train_deephit(
     else:
         cutoffsstring = ''
 
+    if feature_mode == "sparse":
+        gammastring = '_c' + "-".join(str('%05.0f' %(100000*x)) for x in gamma)
+    else:
+        gammastring = ''
+
     layersstring =  '_hs' + str('%03.0f' %(h_dim_shared)) + '_ns'+ str('%01.0f' %(num_layers_shared)) + \
                     '_hf'+ "-".join(str('%03.0f' %(x)) for x in h_dim_FC) + \
                     '_nf'+ "-".join(str(x) for x in num_layers_FC)
@@ -152,7 +157,7 @@ def train_deephit(
                                 '_s' + str('%02.0f' %(10*sigma1)) + \
                                 '_mb'+ str('%03.0f' %(mb_size)) + '_kp' + str('%01.0f' %(10*keep_prob)) + \
                                 '_lr'+ str('%.0E' %(lr_train)) + layersstring + \
-                                cutoffsstring
+                                cutoffsstring + gammastring
 
     print("######## Parameters:  ", "{:2.0f}".format(s_itr), parameter_name)
     if searchmode == 'random':
@@ -172,7 +177,7 @@ def train_deephit(
     config.gpu_options.allow_growth = True
     sess = tf.Session(config=config)
 
-    model = Model_Single(sess, "FHT_DeepHit", mb_size, input_dims, network_settings)
+    model = Model_Single(sess, "FHT_DeepHit", mb_size, input_dims, network_settings, feature_mode)
     saver = tf.train.Saver()
 
     sess.run(tf.global_variables_initializer())

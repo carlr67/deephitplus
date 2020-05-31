@@ -33,13 +33,13 @@ eval_time                   = [1*12, 3*12, 5*12] # Evaluation times (for C-index
     - features: Specifies whether to run DeepHitPlus, FilterDeepHitPlus or HybridDeepHitPlus
     - path_to_importances: Path to importances folder (only for HybridDeepHitPlus)
 '''
-features                    = 'all' # 'all' or 'filter-...' or 'hybrid-...-...' (see Readme)
+features                    = 'all' # 'all' or 'filter_...' or 'hybrid_..._...' or 'sparse' (see Readme)
 
 # Only relevant if running with features='all' preparing for HybridDeepHitPlus
 calculate_importances       = 'ON' # ON / OFF (only works in combination with features='all')
 NUM_PERMUTATIONS            = 20
 
-# Only relevant if running HybridDeepHitPlus (features='hybrid-...-...')
+# Only relevant if running HybridDeepHitPlus (features='hybrid_..._...')
 path_to_immportances        = 'output/results-all_rsON/a10_b30_s01_mb050_kp6_lr1E-04_hs100_ns2_hf050-050_nf2-2' # Only required if running HybridDeepHitPlus
 
 
@@ -68,19 +68,19 @@ rs_seed                     = 1234 # Random seed for generating parameter sets 
 '''
 
 DEFAULT_param_dict = { # Tuple (default_value, event-specific?)
-    'alpha'               : (1.0,                   0), #for log-likelihood loss
-    'beta'                : (3.0,                   0), #for ranking loss
-    'gamma'               : ([0.0001, 0.0001],      1), #for regularization
-    'sigma1'              : (0.1,                   0),
-    'mb_size'             : (50,                    0),
-    'keep_prob'           : (0.6,                   0),
-    'lr_train'            : (1e-4,                  0),
-    'h_dim_shared'        : (50,                    0),
-    'num_layers_shared'   : (5,                     0),
-    'h_dim_FC'            : ([50, 50],              1),
-    'num_layers_FC'       : ([5, 5],                1),
-    'importancecutoff'    : ([0.001, 0.001],        1),
-    'top'                 : ([10, 10],              1)
+    'alpha'               : (1.0,                   0), # for log-likelihood loss
+    'beta'                : (3.0,                   0), # for ranking loss
+    'gamma'               : ([0.0001, 0.0001],      1), # only for SparseDeepHitPlus - multiplier of regularisation term
+    'sigma1'              : (0.1,                   0), # for ranking loss
+    'mb_size'             : (50,                    0), # minibatch size
+    'keep_prob'           : (0.6,                   0), # dropout keep probability
+    'lr_train'            : (1e-4,                  0), # training learning rate
+    'h_dim_shared'        : (50,                    0), # number of nodes per layer in shared subnetwork
+    'num_layers_shared'   : (5,                     0), # number of layers in shared subnetwork
+    'h_dim_FC'            : ([50, 50],              1), # number of nodes per layer in event-specific subnetworks
+    'num_layers_FC'       : ([5, 5],                1), # number of layers in event-specific subnetworks
+    'importancecutoff'    : ([0.001, 0.001],        1), # only for HybridDeepHitPlus with cutoff - cutoff for feature selection by importance for each event
+    'top'                 : ([10, 10],              1) # only for FilterDeepHitPlus or HybridDeepHitPlus with top N - top number of features selected for each event
 }
 
 SET_param_dict = { # Search sets
@@ -128,6 +128,7 @@ initial_W                   = tf.contrib.layers.xavier_initializer()
 
 _, num_Event, num_Category  = np.shape(mask1)  # dim of mask1: [subj, num_Event, Num_Category]
 val_eval_time               = eval_time # Evaluation times for validation
+feature_mode                = features.split("_")[0]
 
 # Arrays for storing final results
 FINALCV = np.zeros([num_Event, len(eval_time), CV_ITERATION])
@@ -282,7 +283,7 @@ for train_index, test_index in kf.split(full_data):
         config.gpu_options.allow_growth = True
         sess = tf.Session(config=config)
 
-        model = Model_Single(sess, "FHT_DeepHit", mb_size, input_dims, network_settings)
+        model = Model_Single(sess, "FHT_DeepHit", mb_size, input_dims, network_settings, feature_mode)
         saver = tf.train.Saver()
 
         saver.restore(sess, file_path + '/models-' + modes + '/search/model_rsv1')
