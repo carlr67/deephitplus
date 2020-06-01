@@ -40,7 +40,7 @@ eval_time                   = [1*12, 3*12, 5*12] # Evaluation times (for C-index
     - features: Specifies whether to run DeepHitPlus, FilterDeepHitPlus or HybridDeepHitPlus
     - path_to_importances: Path to importances folder (only for HybridDeepHitPlus)
 '''
-features                    = 'attentive' # 'all' or 'filter_...' or 'hybrid_..._...' or 'sparse' (see Readme)
+features                    = 'all' # 'all' or 'filter_...' or 'hybrid_..._...' or 'sparse' (see Readme)
 
 # Only relevant if running with features='all' preparing for HybridDeepHitPlus
 calculate_importances       = 'ON' # ON / OFF (only works in combination with features='all')
@@ -55,7 +55,7 @@ path_to_immportances        = 'output/results-all_rsON/a10_b30_s01_mb050_kp6_lr1
     Choose run settings
 '''
 random_search_mode          = 'ON' # ON / OFF
-RS_ITERATION                = 2 # How many iterations for random search
+RS_ITERATION                = 40 # How many iterations for random search
 CV_ITERATION                = 5 # How many iterations for K-Fold cross-validation
 cv_to_search                = [1, 0, 0, 0, 0] # 0 for "don't perform search on this iteration"
 valid_mode                  = 'ON' # ON / OFF
