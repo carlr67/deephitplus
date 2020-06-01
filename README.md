@@ -21,9 +21,7 @@ My research developed extensions to the model [DeepHit](#original-aaai-deephit-p
 - **AttentiveDeepHitPlus**: This model was an experimental part of my MSc thesis, using a separate network to generate attention masks for soft feature selection. Despite underperforming in my first experiments, potential benefits include allowing example-specific feature selection and improved interpretability.
 
 ### Uploaded code
-The currently uploaded code base has full functionality to run *DeepHitPlus*, *FilterDeepHitPlus*, *HybridDeepHitPlus* and *SparseDeepHitPlus*.
-
-It does not include *AttentiveDeepHitPlus*, as this is a separate implementation (please contact me if you are interested in these too). I encourage further research on these ideas with the charm of inbuilt feature selection and model interpretability.
+The currently uploaded code base has full functionality to run all models: *DeepHitPlus*, *FilterDeepHitPlus*, *HybridDeepHitPlus*, *SparseDeepHitPlus* and *AttentiveDeepHitPlus*.
 
 ### Acknowledgements
 I would like to thank my MSc thesis supervisor [Professor Mihaela van der Schaar](https://www.turing.ac.uk/people/researchers/mihaela-van-der-schaar) and her inspiring research group, in particular [Jinsung Yoon](https://sites.google.com/view/jinsungyoon) and [Changhee Lee](http://www.vanderschaar-lab.com/team/), for their invaluable support, advice and insights in conducting this research.
@@ -78,6 +76,10 @@ Edit the settings in the second part of the `SETTINGS` section in `run_deephitpl
 
 #### SparseDeepHitPlus ####
 1. Set `features = 'sparse'` to run the model as SparseDeepHitPlus
+2. Be sure to review the regularisation hyperparameter `gamma` below
+
+#### AttentiveDeepHitPlus ####
+1. Set `features = 'attentive'` to run the model as SparseDeepHitPlus
 2. Be sure to review the regularisation hyperparameter `gamma` below
 
 ### Step 3: Edit the run settings (if desired)
