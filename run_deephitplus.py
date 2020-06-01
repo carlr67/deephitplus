@@ -40,7 +40,7 @@ eval_time                   = [1*12, 3*12, 5*12] # Evaluation times (for C-index
     - features: Specifies whether to run DeepHitPlus, FilterDeepHitPlus or HybridDeepHitPlus
     - path_to_importances: Path to importances folder (only for HybridDeepHitPlus)
 '''
-features                    = 'filter_anova' # 'all' or 'filter_...' or 'hybrid_..._...' or 'sparse' (see Readme)
+features                    = 'attentive' # 'all' or 'filter_...' or 'hybrid_..._...' or 'sparse' (see Readme)
 
 # Only relevant if running with features='all' preparing for HybridDeepHitPlus
 calculate_importances       = 'ON' # ON / OFF (only works in combination with features='all')
@@ -156,6 +156,7 @@ for train_index, test_index in kf.split(full_data):
     print()
     print()
     print("############################ CROSS VALIDATION", cv_iter, "############################")
+    print("Running feature setting:", features)
 
     if random_search_mode == 'OFF':
         S_ITERATION = 1
@@ -337,6 +338,16 @@ for train_index, test_index in kf.split(full_data):
     # c-index result
     df1 = pd.DataFrame(result1, index = row_header, columns=col_header1)
     df1.to_csv('./' + file_path + '/results-' + modes + '/' + best_parameter_name + '/result_' + features + '_CINDEX_cv' + str(cv_iter) + '.csv')
+
+    if feature_mode == 'attentive':
+        # attention results
+        resultatt = model.sess.run(model.att_out, feed_dict={model.x: te_data, model.keep_prob: 1.0})
+        names = ['Participant', 'Event', 'Feature']
+
+        attindex = pd.MultiIndex.from_product([range(0, len(te_data)), range(0, num_Event), full_feat_list], names=names)
+        dfatt = pd.DataFrame({'Attention': resultatt.flatten()}, index=attindex)
+        dfatt.to_csv('./' + file_path + '/results-' + modes + '/' + best_parameter_name + '/attention_cv' + str(cv_iter) + '.csv')
+
 
     ### Save trained model for later use
     saver.save(sess, file_path + '/results-' + modes + '/' + best_parameter_name + '/models/dhmodel_cv' + str(cv_iter))

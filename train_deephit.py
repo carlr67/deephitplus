@@ -151,7 +151,7 @@ def train_deephit(
     else:
         cutoffsstring = ''
 
-    if feature_mode == "sparse":
+    if feature_mode in ["sparse", "attentive"]:
         gammastring = '_c' + "-".join(str('%05.0f' %(100000*x)) for x in gamma)
     else:
         gammastring = ''

@@ -36,6 +36,8 @@ class Model_Single:
             self.version = "standard" # "standard" for DeepHitPlus, FilterDeepHitPlus, HybridDeepHitPlus, "sparse" for SparseDeepHitPlus
         elif feature_mode == "sparse":
             self.version = "sparse"
+        elif feature_mode == "attentive":
+            self.version = "attentive"
 
         self.sess               = sess
         self.name               = name
@@ -83,6 +85,7 @@ class Model_Single:
 
             if self.version == "standard":
                 shared_inputs = self.x[:, 0:n_inputs]
+                shared_out = utils.create_FCNet(shared_inputs, int(self.num_layers_shared), int(self.h_dim_shared), self.active_fn, int(self.h_dim_shared), self.active_fn, self.initial_W, self.keep_prob)
 
             elif self.version == "sparse":
                 shared_o2o_weights = tf.Variable(self.initial_W([n_inputs]), name="shared_o2o_weights")
@@ -93,30 +96,33 @@ class Model_Single:
                 )
                 tf.contrib.layers.apply_regularization(shared_o2o_regularizer, weights_list=[shared_o2o_weights])
 
-            shared_out = utils.create_FCNet(shared_inputs, int(self.num_layers_shared), int(self.h_dim_shared), self.active_fn, int(self.h_dim_shared), self.active_fn, self.initial_W, self.keep_prob)
-            #last_x = self.x  #for residual connection
+                shared_out = utils.create_FCNet(shared_inputs, int(self.num_layers_shared), int(self.h_dim_shared), self.active_fn, int(self.h_dim_shared), self.active_fn, self.initial_W, self.keep_prob)
 
-            #inputs = tf.concat([last_x, shared_out], axis=1)
+            elif self.version == "attentive":
+                att_shared_inputs = self.x[:, 0:n_inputs]
+                att_output_dim = sum(self.x_dim_lst[1:])
+                att_out = utils.create_FCNet(att_shared_inputs, int(self.num_layers_shared), att_output_dim, self.active_fn, att_output_dim, None, self.initial_W, self.keep_prob)
+                att_out = tf.reshape(att_out, [-1, self.num_Event, n_inputs])
+                self.att_out = tf.nn.softmax(att_out, axis=-1)
 
-            #1 layer for combining inputs
-            # h = FC_Net(inputs, self.h_dim_shared, activation_fn=self.active_fn, weights_initializer=self.initial_W, scope="Layer1")
-            # h = tf.nn.dropout(h, keep_prob=self.keep_prob)
-
-            #(num_layers_FC-1) layers for cause-specific (num_Event subNets)
-            # !!! Changed to num_layers_FC layers for cause-specific subnetwork
+            # num_layers_FC layers for cause-specific subnetwork
             out = []
             for _event in range(self.num_Event):
                 start = sum(self.x_dim_lst[0:(_event + 1)])
                 end = sum(self.x_dim_lst[0:(_event + 2)])
                 important_x = self.x[:, start:end]  #for residual connection
 
-                inputs = tf.concat([important_x, shared_out], axis=1)
-                n_inputs_event = self.x_dim_lst[_event + 1] + + self.h_dim_shared
+
 
                 if self.version == "standard":
+                    inputs = tf.concat([important_x, shared_out], axis=1)
+                    n_inputs_event = self.x_dim_lst[_event + 1] + self.h_dim_shared
                     cs_out = utils.create_FCNet(inputs, int(self.num_layers_FC[_event]), int(self.h_dim_FC[_event]), self.active_fn, int(self.h_dim_FC[_event]), self.active_fn, self.initial_W, self.keep_prob)
 
                 elif self.version == "sparse":
+                    inputs = tf.concat([important_x, shared_out], axis=1)
+                    n_inputs_event = self.x_dim_lst[_event + 1] + self.h_dim_shared
+                    
                     specific_o2o_weights = tf.Variable(self.initial_W([int(n_inputs_event)]), name="specific_o2o_weights_"+str(_event+1))
                     specific_inputs = tf.multiply(inputs, specific_o2o_weights)
 
@@ -127,6 +133,13 @@ class Model_Single:
 
                     cs_out = utils.create_FCNet(specific_inputs, int(self.num_layers_FC[_event]), int(self.h_dim_FC[_event]), self.active_fn, int(self.h_dim_FC[_event]), self.active_fn, self.initial_W, self.keep_prob)
 
+                elif self.version == "attentive":
+                    att_inputs = tf.multiply(important_x, self.att_out[:, _event, :])
+                    regularizer = tf.contrib.layers.l2_regularizer(scale=self.c[_event], scope=None)
+
+                    cs_out = utils.create_FCNet(att_inputs, int(self.num_layers_FC[_event]), int(self.h_dim_FC[_event]), self.active_fn, int(self.h_dim_FC[_event]), self.active_fn, self.initial_W, self.keep_prob, regularizer=regularizer)
+
+
                 out.append(cs_out)
 
             # out = tf.stack(out, axis=1) # stack referenced on subject
@@ -135,7 +148,12 @@ class Model_Single:
 
             out = tf.nn.dropout(out, keep_prob=self.keep_prob)
 
-            out = FC_Net(out, self.num_Event * self.num_Category, activation_fn=tf.nn.softmax, weights_initializer=self.initial_W, scope="Output")
+            if self.version in ["standard", "sparse"]:
+                out = FC_Net(out, self.num_Event * self.num_Category, activation_fn=tf.nn.softmax, weights_initializer=self.initial_W, scope="Output")
+            elif self.version == "attentive":
+                regularizer = tf.contrib.layers.l2_regularizer(scale=tf.reduce_mean(self.c), scope=None)
+                out = FC_Net(out, self.num_Event * self.num_Category, activation_fn=tf.nn.softmax, weights_initializer=self.initial_W, scope="Output", weights_regularizer=regularizer, biases_regularizer=regularizer)
+
             self.out = tf.reshape(out, [-1, self.num_Event, self.num_Category])
 
 
